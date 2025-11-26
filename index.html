@@ -8,16 +8,16 @@
 :root{
   --bg-grad: radial-gradient(circle at 50% 0%, #1e1b4b, #0f172a 60%, #020617);
   
-  /* "Liquid Glass" for Main Windows - Untinted, Low Blur */
+  /* "Liquid Glass" for Main Windows */
   --liquid-bg: rgba(255, 255, 255, 0.02);
   --liquid-blur: blur(4px);
   --liquid-border: rgba(255, 255, 255, 0.1);
   --liquid-highlight: rgba(255, 255, 255, 0.15);
   --liquid-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.2);
 
-  /* "Deep Cherry Glass" for Bars - Vibrant, No Brown */
+  /* "Deep Cherry Glass" for Bars */
   --bar-bg: rgba(110, 10, 50, 0.65); 
-  --bar-border: rgba(255, 105, 180, 0.3); /* Hot pink highlight */
+  --bar-border: rgba(255, 105, 180, 0.3); 
   --bar-blur: blur(12px);
   
   --text-main: #f8fafc;
@@ -69,7 +69,7 @@ main{ flex:1; padding:16px 16px 100px; max-width:800px; width:100%; margin:0 aut
 .view.active{display:block;}
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* PANELS (Liquid Style) */
+/* PANELS */
 .panel{
   margin-bottom:16px; border-radius:var(--radius-lg); padding:16px;
   background: var(--liquid-bg);
@@ -109,6 +109,17 @@ input, select, textarea{
   font-size:13px; outline:none; font-family:inherit;
   backdrop-filter: blur(4px);
 }
+.mini-select {
+  padding: 4px 8px;
+  height: auto;
+  width: auto;
+  font-size: 10px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  color: var(--text-muted);
+  border: 1px solid var(--liquid-border);
+}
+
 .row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .row.space{ justify-content:space-between; }
 .stack{ display:flex; flex-direction:column; gap:8px; }
@@ -179,7 +190,7 @@ hr{ border:0; height:1px; background:rgba(255,255,255,0.15); margin:12px 0; }
 }
 .nav-btn{ flex:1; max-width:70px; background:transparent; border:none; color:var(--text-muted); display:flex; flex-direction:column; align-items:center; gap:4px; font-size:9px; cursor:pointer; padding:6px; border-radius:8px; transition:all 0.2s; }
 .nav-btn svg{ width:20px; height:20px; stroke-width:2; }
-.nav-btn.active{ color:#fff; background:rgba(255,255,255,0.15); box-shadow:0 0 10px rgba(255,255,255,0.1); }
+.nav-btn.active{ color:#fff; background:rgba(255,255,255,0.15); box-shadow:0 0 10px rgba(255,105,180,0.2); }
 
 /* Overlays */
 .pack-overlay{ position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.9); display:none; flex-direction:column; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(8px); }
@@ -250,7 +261,12 @@ hr{ border:0; height:1px; background:rgba(255,255,255,0.15); margin:12px 0; }
     <div id="panel-duel" class="panel hidden">
       <div class="panel-header">
         <h2 class="panel-title">Duel</h2>
-        <button class="btn sm ghost close-panel" onclick="app.closePanels()">Back</button>
+        <div class="row">
+          <select id="duel-deck-filter" class="mini-select" onchange="app.filterDuelStrip()">
+             <option value="">All Cards</option>
+          </select>
+          <button class="btn sm ghost close-panel" onclick="app.closePanels()">Back</button>
+        </div>
       </div>
       <div class="duel-layout">
         <div class="row space" style="margin-bottom:8px;">
@@ -291,6 +307,7 @@ hr{ border:0; height:1px; background:rgba(255,255,255,0.15); margin:12px 0; }
       </div>
       <button class="btn full" onclick="app.runBattle()">Simulate Royale</button>
       <div class="log-box" id="battle-log" style="margin-top:12px; max-height:150px; overflow-y:auto; font-family:monospace; font-size:11px; background:rgba(0,0,0,0.3); padding:8px; border-radius:8px;"></div>
+      <button class="btn sm soft full hidden" id="btn-view-champ" style="margin-top:8px;" onclick="app.viewChampion()">View Champion</button>
     </div>
 
     <!-- MEMORY -->
@@ -298,6 +315,9 @@ hr{ border:0; height:1px; background:rgba(255,255,255,0.15); margin:12px 0; }
       <div class="panel-header">
         <h2 class="panel-title">Memory Match</h2>
         <button class="btn sm ghost close-panel" onclick="app.closePanels()">Back</button>
+      </div>
+      <div class="row space" style="margin-bottom:8px;">
+         <span class="small" id="mem-attempts">Attempts: 0/20</span>
       </div>
       <div class="memory-grid" id="memory-grid"></div>
       <button class="btn full" onclick="app.initMemory()">New Game</button>
@@ -354,7 +374,7 @@ hr{ border:0; height:1px; background:rgba(255,255,255,0.15); margin:12px 0; }
         <span class="small" id="p-time">0s / 30s</span>
       </div>
       <button class="btn full" style="height:60px; font-size:14px;" onmousedown="app.pressureTap()" ontouchstart="app.pressureTap()">TAP TO SURVIVE</button>
-      <button class="btn sm soft full" style="margin-top:12px;" onclick="app.startPressure()">Start Run</button>
+      <button class="btn sm soft full" style="margin-top:12px;" onclick="app.startPressure()">Start Run (Warning: Perma-Death)</button>
     </div>
   </section>
 
@@ -381,17 +401,16 @@ hr{ border:0; height:1px; background:rgba(255,255,255,0.15); margin:12px 0; }
           <input type="text" id="deck-input" placeholder="New Deck Name">
           <button class="btn sm" onclick="app.saveDeck()">Save</button>
         </div>
-        <select id="deck-select"></select>
+        <select id="deck-select" onchange="app.selectDeck(this.value)"></select>
       </div>
       <hr>
       <div class="field">
-        <label>Fusion</label>
-        <div class="row space">
-          <button class="btn sm soft" onclick="app.setFusion('a')">Set Card A</button>
-          <button class="btn sm soft" onclick="app.setFusion('b')">Set Card B</button>
+        <label>Fusion (Sacrifice Both)</label>
+        <div class="row">
+          <select id="fusion-a" style="flex:1"><option value="">Select Card A</option></select>
+          <select id="fusion-b" style="flex:1"><option value="">Select Card B</option></select>
         </div>
-        <div class="small" id="fuse-status" style="text-align:center; margin:6px 0;">Select cards from collection</div>
-        <button class="btn full" onclick="app.runFusion()">Fuse Cards</button>
+        <button class="btn full" style="margin-top:8px;" onclick="app.runFusion()">Fuse Cards</button>
       </div>
       <hr>
       <div class="field">
@@ -506,7 +525,7 @@ hr{ border:0; height:1px; background:rgba(255,255,255,0.15); margin:12px 0; }
         <div class="card-stat-row" id="sheet-stats"></div>
         <div class="small" id="sheet-meta"></div>
         <hr>
-        <button class="btn sm soft full" onclick="app.toggleSheetDeck()">Toggle Deck</button>
+        <button class="btn sm soft full" id="btn-sheet-toggle-deck" onclick="app.toggleSheetDeck()">Toggle Deck</button>
         <button class="btn sm warn full" onclick="app.deleteSheetCard()">Delete</button>
       </div>
     </div>
@@ -541,11 +560,13 @@ const app = (function(){
   let save = JSON.parse(JSON.stringify(DEFAULT_SAVE));
   let duel = {round:1, pScore:0, aiScore:0, history:[], active:false, usedIds:[]};
   let selDuelCard = null;
-  let fusion = {a:null, b:null};
-  let curSheetId = null;
+  let duelDeckFilter = null; 
+  let activeDeckId = null; 
   let dice = {card:null, streak:0};
   let pressure = {active:false, loop:null, level:1, timer:0, pos:50, riskCard:null, visualCard:null};
-  let memory = {grid:[], first:null, lock:false};
+  let memory = {grid:[], first:null, lock:false, attempts:0, maxAttempts:20};
+  let lastChampId = null;
+  let curSheetId = null;
 
   const $ = id => document.getElementById(id);
   const uid = () => Math.random().toString(36).slice(2);
@@ -596,6 +617,10 @@ const app = (function(){
   }
   function getTemplate(c){ return save.pool.find(p=>p.id===c.tid) || {name:'Unknown', imageUrl:''}; }
   function getRarity(c){ return save.rarities.find(r=>r.id===c.rid) || save.rarities[0]; }
+  function getNextRarity(rid){
+    const map = {c:'u', u:'r', r:'e', e:'l', l:'l'};
+    return map[rid] || 'c';
+  }
 
   // --- MODES ---
   function setView(v){
@@ -603,7 +628,10 @@ const app = (function(){
     $(`view-${v}`).classList.add('active');
     document.querySelectorAll('.nav-btn').forEach(e=>e.classList.remove('active'));
     $(`nav-${v}`).classList.add('active');
-    if(v==='lab') renderDialogSelect(); 
+    if(v==='lab') {
+        renderDialogSelect(); 
+        renderFusionSelects();
+    }
   }
   function openMode(mode){
     document.querySelectorAll('.panel[id^="panel-"]').forEach(p => p.classList.add('hidden'));
@@ -612,7 +640,12 @@ const app = (function(){
     if(mode === 'pressure') initPressure();
     if(mode === 'dice') initDice();
     if(mode === 'memory') initMemory();
-    if(mode === 'duel') newDuel();
+    if(mode === 'duel') {
+      updateDuelDeckFilter(); 
+      // Always ensure deck filter logic runs on open
+      if(duel.active) renderDuel(); // if active, just show state
+      else newDuel();
+    }
   }
   function closePanels(){
     document.querySelectorAll('.panel[id^="panel-"]').forEach(p => p.classList.add('hidden'));
@@ -669,7 +702,6 @@ const app = (function(){
     $('pressure-dialogue').textContent = "";
     if(pressure.loop) clearInterval(pressure.loop);
   }
-  
   function updatePressureVisuals(){
     pressure.visualCard = rand(save.collection) || pressure.riskCard;
     const t = getTemplate(pressure.visualCard);
@@ -682,28 +714,21 @@ const app = (function(){
     
     $('pressure-dialogue').textContent = d.summon ? `"${d.summon}"` : `"${t.name} appears!"`;
   }
-
   function startPressure(){
     if(!save.collection.length) return toast("No cards!");
-    // REMOVED CONFIRMATION
     pressure.active = true;
     pressure.level = 1;
     pressure.timer = 0;
     pressure.pos = 50;
     pressure.riskCard = save.collection[0];
-    
     updatePressureVisuals();
-    
     if(pressure.loop) clearInterval(pressure.loop);
     pressure.loop = setInterval(pressureTick, 30);
   }
-  
   function pressureTick(){
     pressure.timer += 0.03;
-    
     const force = 0.2 * Math.pow(1.2, pressure.level - 1);
     pressure.pos -= force;
-    
     if(pressure.pos <= 0 || pressure.pos >= 100) {
       clearInterval(pressure.loop);
       save.collection = save.collection.filter(x=>x.id!==pressure.riskCard.id);
@@ -713,41 +738,30 @@ const app = (function(){
       $('pressure-dialogue').textContent = "GAME OVER";
       return;
     }
-    
     $('p-bar').style.left = pressure.pos + '%';
     $('p-time').textContent = Math.floor(pressure.timer) + 's / 30s';
-    
     if(pressure.timer >= 30){
       pressure.timer = 0;
       pressure.pos = 50;
-      
       if(save.pool.length){
         const roll = Math.random() * 100;
         let rid = 'c';
         const l = pressure.level;
-        if(l===1 || l===2) rid='c';
+        if(l<3) rid='c';
         else if(l===3) rid = roll<75 ? 'c' : 'u';
         else if(l===4) rid = roll<55 ? 'c' : (roll<85 ? 'u' : 'r');
         else if(l===5) rid = roll<45 ? 'c' : (roll<78 ? 'u' : (roll<98 ? 'r' : 'e'));
-        else if(l===6) rid = roll<30 ? 'c' : (roll<70 ? 'u' : (roll<95 ? 'r' : 'e'));
-        else if(l===7) rid = roll<19 ? 'c' : (roll<49 ? 'u' : (roll<89 ? 'r' : (roll<99?'e':'l')));
-        else if(l===8) rid = roll<17 ? 'c' : (roll<41 ? 'u' : (roll<73 ? 'r' : (roll<97?'e':'l')));
-        else if(l===9) rid = roll<15 ? 'c' : (roll<33 ? 'u' : (roll<58 ? 'r' : (roll<88?'e':'l')));
-        else if(l===10) rid = roll<5 ? 'c' : (roll<15 ? 'u' : (roll<35 ? 'r' : (roll<75?'e':'l')));
-        else if(l>=11) rid = roll<1 ? 'c' : (roll<3 ? 'u' : (roll<15 ? 'r' : (roll<65?'e':'l')));
-
+        else if(l>=6) rid = roll<30 ? 'c' : (roll<70 ? 'u' : (roll<95 ? 'r' : 'e'));
         const c = createCard(rand(save.pool), rid);
         save.collection.push(c); persist(); renderCollection();
         const rName = save.rarities.find(r=>r.id==rid).name;
         toast(`Level ${pressure.level} Done! +${rName} Card!`);
       }
-      
       pressure.level++;
       $('p-lvl').textContent = `Level ${pressure.level}`;
       updatePressureVisuals();
     }
   }
-  
   function pressureTap(){
     if(!pressure.active) return;
     pressure.pos += 3.5; 
@@ -775,7 +789,6 @@ const app = (function(){
     const aiBase = aiC.stats[s];
     const d1 = Math.ceil(Math.random()*6);
     const d2 = Math.ceil(Math.random()*6);
-    
     $('dice-you').textContent = d1;
     $('dice-ai').textContent = d2;
     
@@ -784,7 +797,7 @@ const app = (function(){
       $('dice-streak').textContent = `Streak: ${dice.streak}`;
       if(dice.streak>=3){
         toast("3-Streak! Card Won!");
-        if(save.pool.length) { save.collection.push(createCard(rand(save.pool))); persist(); }
+        if(save.pool.length) { save.collection.push(createCard(rand(save.pool))); persist(); renderCollection(); }
         dice.streak = 0;
       } else toast("Win! Keep going.");
     } else {
@@ -799,7 +812,9 @@ const app = (function(){
     if(save.pool.length < 4) return toast("Need pool data");
     const g = $('memory-grid');
     g.innerHTML = '';
-    memory = {grid:[], first:null, lock:false};
+    memory = {grid:[], first:null, lock:false, attempts:0, maxAttempts:20};
+    $('mem-attempts').textContent = `Attempts: 0/20`;
+    
     const set = [];
     for(let i=0; i<8; i++) set.push(rand(save.pool));
     const cards = [...set, ...set].sort(()=>Math.random()-0.5);
@@ -814,11 +829,14 @@ const app = (function(){
     });
   }
   function flipMem(el, t, idx){
-    if(memory.lock || el.classList.contains('flip') || memory.grid[idx].matched) return;
+    if(memory.lock || el.classList.contains('flip') || memory.grid[idx].matched || memory.attempts >= memory.maxAttempts) return;
+    
     el.classList.add('flip');
     if(!memory.first){
       memory.first = {el, t, idx};
     } else {
+      memory.attempts++;
+      $('mem-attempts').textContent = `Attempts: ${memory.attempts}/20`;
       memory.lock = true;
       if(memory.first.t.id === t.id){
         memory.grid[idx].matched = true;
@@ -827,8 +845,11 @@ const app = (function(){
         memory.lock = false;
         if(memory.grid.every(x=>x.matched)){
           toast("Cleared! Card Won!");
-          if(save.pool.length) save.collection.push(createCard(rand(save.pool)));
-          persist();
+          if(save.pool.length) {
+            save.collection.push(createCard(rand(save.pool)));
+            persist();
+            renderCollection();
+          }
         }
       } else {
         setTimeout(()=>{
@@ -836,14 +857,40 @@ const app = (function(){
           memory.first.el.classList.remove('flip');
           memory.first = null;
           memory.lock = false;
+          if(memory.attempts >= memory.maxAttempts) toast("Out of attempts!");
         }, 800);
       }
     }
   }
 
   // --- DUEL ---
+  function updateDuelDeckFilter(){
+    const s = $('duel-deck-filter');
+    s.innerHTML = '<option value="">All Cards</option>';
+    save.decks.forEach(d => s.innerHTML += `<option value="${d.id}">${d.name}</option>`);
+    duelDeckFilter = null;
+  }
+  function filterDuelStrip(){
+    duelDeckFilter = $('duel-deck-filter').value;
+    newDuel(); // FORCE NEW DUEL ON FILTER CHANGE
+  }
+
   function newDuel(){
-    if(save.collection.length < save.settings.rounds) return toast(`Need ${save.settings.rounds} cards to duel!`);
+    // Calculate effective pool
+    let pool = save.collection;
+    if(duelDeckFilter){
+       const d = save.decks.find(x=>x.id===duelDeckFilter);
+       if(d) pool = save.collection.filter(c=>d.cards.includes(c.id));
+    }
+    
+    if(pool.length < save.settings.rounds){
+       duel = {active:false, round:1, pScore:0, aiScore:0, history:[], usedIds:[]};
+       renderDuel(); 
+       $('duel-strip').innerHTML = `<div class="small" style="padding:10px;opacity:0.7;">Deck too small (Need ${save.settings.rounds} cards)</div>`;
+       $('btn-duel-fight').disabled = true;
+       return;
+    }
+
     duel = {round:1, pScore:0, aiScore:0, history:[], active:true, usedIds:[]};
     selDuelCard = null;
     renderDuel();
@@ -861,12 +908,26 @@ const app = (function(){
   function renderDuelStrip(){
     const s = $('duel-strip');
     s.innerHTML = '';
-    save.collection.forEach(c => {
-      if(duel.usedIds.includes(c.id)) return;
+    
+    let candidates = save.collection;
+    if(duelDeckFilter){
+       const d = save.decks.find(x=>x.id===duelDeckFilter);
+       if(d) candidates = candidates.filter(c=>d.cards.includes(c.id));
+    }
+
+    // Exclude used
+    const available = candidates.filter(c => !duel.usedIds.includes(c.id));
+    if(!available.length && duel.active) {
+         s.innerHTML = '<div class="small" style="padding:10px; opacity:0.5;">No available cards</div>';
+         return;
+    }
+
+    available.forEach(c => {
       const t = getTemplate(c);
       const d = document.createElement('div');
       d.innerHTML = `<img src="${t.imageUrl}" style="width:60px;height:80px;object-fit:cover;border:1px solid #fff;border-radius:4px;">`;
       d.onclick = () => {
+        if(duel.usedIds.includes(c.id)) return;
         selDuelCard = c;
         $('slot-you').innerHTML = `<img src="${t.imageUrl}" style="width:100%;height:100%;object-fit:cover;">`;
         $('btn-duel-fight').disabled = false;
@@ -901,7 +962,7 @@ const app = (function(){
           const c = createCard(rand(save.pool));
           save.collection.push(c);
           persist();
-          renderCollection();
+          renderCollection(); 
         } else toast("Defeat.");
         newDuel();
       }, 2000);
@@ -911,9 +972,21 @@ const app = (function(){
   }
   
   function runBattle(){
-    if(save.collection.length<2) return toast("Need 2+ cards");
+    const src = $('battle-source').value;
+    let pool = [];
+    if(src === 'deck'){
+      if(!activeDeckId) return toast("Select a deck in Lab first!");
+      const d = save.decks.find(x=>x.id===activeDeckId);
+      if(d) pool = save.collection.filter(c => d.cards.includes(c.id));
+    } else {
+      pool = [...save.collection];
+    }
+    if(pool.length<2) return toast("Need 2+ cards");
+    
     const log = $('battle-log'); log.innerHTML = '';
-    let pool = [...save.collection].sort(()=>Math.random()-0.5);
+    $('btn-view-champ').classList.add('hidden');
+    
+    pool.sort(()=>Math.random()-0.5);
     while(pool.length > 1){
       const a = pool.pop(); const b = pool.pop();
       const s = rand(save.stats);
@@ -921,66 +994,45 @@ const app = (function(){
       pool.unshift(win);
       log.innerHTML += `<div>${getTemplate(win).name} won</div>`;
     }
-    toast(`Winner: ${getTemplate(pool[0]).name}! Card Won!`);
-    save.collection.push(createCard(rand(save.pool))); persist(); renderCollection();
+    const winner = pool[0];
+    lastChampId = winner.id;
+    log.innerHTML = `<div style="color:#fbbf24;font-weight:bold;">Winner: ${getTemplate(winner).name}</div>` + log.innerHTML;
+    $('btn-view-champ').classList.remove('hidden');
+    toast(`Winner: ${getTemplate(winner).name}!`);
   }
+  function viewChampion(){ if(lastChampId) openSheet(save.collection.find(c=>c.id===lastChampId)); }
 
-  // --- COLLECTION & LAB ---
-  function renderCollection(){
-    const g = $('collection-grid');
-    g.innerHTML = '';
-    if(!save.collection.length) $('col-empty').classList.remove('hidden');
-    else $('col-empty').classList.add('hidden');
-    save.collection.forEach(c => {
-      const t = getTemplate(c);
-      const r = getRarity(c);
-      const d = document.createElement('div');
-      d.className = 'card-tile';
-      d.onclick = () => openSheet(c);
-      d.innerHTML = `<div class="card-img-wrap"><img src="${t.imageUrl}"></div><div class="rarity-badge" style="color:${r.color}">${r.name}</div><div class="card-body"><div class="card-name">${t.name}</div></div>`;
-      g.appendChild(d);
-    });
-  }
-  function openSheet(c){
-    curSheetId = c.id;
-    const t = getTemplate(c);
-    const r = getRarity(c);
-    $('sheet-name').textContent = t.name;
-    $('sheet-img').innerHTML = `<img src="${t.imageUrl}">`;
-    $('sheet-rarity').textContent = r.name;
-    $('sheet-rarity').style.color = r.color;
-    $('sheet-stats').innerHTML = save.stats.map(s=>`<span class="stat-pill">${s} ${c.stats[s]}</span>`).join('');
-    $('sheet-layer').classList.add('active');
-    const d = save.dialogues[c.id] || {};
-    $('sheet-dialogue').innerHTML = `<li>Summon: ${d.summon||'-'}</li><li>Win: ${d.win||'-'}</li><li>Lose: ${d.lose||'-'}</li>`;
-  }
-  function closeSheet(){ $('sheet-layer').classList.remove('active'); }
-  function deleteSheetCard(){
-    // REMOVED CONFIRMATION HERE TOO
-    save.collection = save.collection.filter(x=>x.id!==curSheetId);
-    persist(); renderCollection(); closeSheet();
-  }
-  
-  function renderDeckSelect(){
-    const s = $('deck-select'); s.innerHTML='<option value="">Select Deck</option>';
-    save.decks.forEach(d => s.innerHTML+=`<option value="${d.id}">${d.name}</option>`);
-  }
-  function saveDeck(){
-    const n = $('deck-input').value;
-    if(n){ save.decks.push({id:uid(), name:n, cards:[]}); persist(); renderDeckSelect(); toast("Deck saved"); }
-  }
-  
-  function setFusion(s){
-    if(!save.collection.length) return toast("No cards");
-    if(s==='a') fusion.a = save.collection[0];
-    if(s==='b') fusion.b = save.collection[1] || save.collection[0];
-    toast(`${s.toUpperCase()} Set`);
+  // --- LAB: FUSION & DIALOGUE ---
+  function renderFusionSelects(){
+      const a = $('fusion-a');
+      const b = $('fusion-b');
+      a.innerHTML = '<option value="">Select Card A</option>';
+      b.innerHTML = '<option value="">Select Card B</option>';
+      save.collection.forEach(c => {
+         const t = getTemplate(c);
+         const op = `<option value="${c.id}">${t.name}</option>`;
+         a.innerHTML += op;
+         b.innerHTML += op;
+      });
   }
   function runFusion(){
-    if(fusion.a && fusion.b){
-      const c = createCard(rand([getTemplate(fusion.a), getTemplate(fusion.b)]));
-      save.collection.push(c); persist(); renderCollection(); toast("Fused!");
-    }
+    const idA = $('fusion-a').value;
+    const idB = $('fusion-b').value;
+    if(!idA || !idB || idA === idB) return toast("Select 2 different cards");
+    
+    const cA = save.collection.find(x=>x.id===idA);
+    const cB = save.collection.find(x=>x.id===idB);
+    if(!cA || !cB) return;
+
+    const parentT = Math.random() > 0.5 ? getTemplate(cA) : getTemplate(cB);
+    let rid = cA.rid;
+    if(Math.random() < 0.3) rid = getNextRarity(rid);
+      
+    const c = createCard(parentT, rid);
+    save.collection.push(c);
+    save.collection = save.collection.filter(x => x.id !== idA && x.id !== idB);
+    $('fusion-a').value = ""; $('fusion-b').value = "";
+    persist(); renderCollection(); renderFusionSelects(); toast("Fusion Complete!");
   }
   
   function renderDialogSelect(){
@@ -1003,58 +1055,91 @@ const app = (function(){
   function saveDialogue(){
     const id = $('dialog-card-select').value;
     if(id){
-      save.dialogues[id] = {
-        summon:$('inp-summon').value,
-        win:$('inp-win').value,
-        lose:$('inp-lose').value
-      };
+      save.dialogues[id] = {summon:$('inp-summon').value, win:$('inp-win').value, lose:$('inp-lose').value};
       persist(); toast("Saved");
-    } else {
-      toast("Select a card first");
-    }
+    } else toast("Select card");
   }
 
-  // --- SETTINGS EXPORTS ---
+  // --- DECKS & SHEET ---
+  function renderDeckSelect(){
+    const s = $('deck-select'); s.innerHTML='<option value="">Select Deck</option>';
+    save.decks.forEach(d => s.innerHTML+=`<option value="${d.id}">${d.name}</option>`);
+    if(activeDeckId) s.value = activeDeckId;
+  }
+  function selectDeck(id){ activeDeckId = id; toast(id ? "Deck Selected" : "No Deck"); }
+  function saveDeck(){
+    const n = $('deck-input').value;
+    if(n){ save.decks.push({id:uid(), name:n, cards:[]}); persist(); renderDeckSelect(); toast("Deck saved"); }
+  }
+  function renderCollection(){
+    const g = $('collection-grid'); g.innerHTML = '';
+    if(!save.collection.length) $('col-empty').classList.remove('hidden');
+    else $('col-empty').classList.add('hidden');
+    save.collection.forEach(c => {
+      const t = getTemplate(c); const r = getRarity(c);
+      const d = document.createElement('div'); d.className = 'card-tile';
+      d.onclick = () => openSheet(c);
+      d.innerHTML = `<div class="card-img-wrap"><img src="${t.imageUrl}"></div><div class="rarity-badge" style="color:${r.color}">${r.name}</div><div class="card-body"><div class="card-name">${t.name}</div></div>`;
+      g.appendChild(d);
+    });
+  }
+  function openSheet(c){
+    if(!c) return;
+    curSheetId = c.id;
+    const t = getTemplate(c); const r = getRarity(c);
+    $('sheet-name').textContent = t.name; $('sheet-img').innerHTML = `<img src="${t.imageUrl}">`;
+    $('sheet-rarity').textContent = r.name; $('sheet-rarity').style.color = r.color;
+    $('sheet-stats').innerHTML = save.stats.map(s=>`<span class="stat-pill">${s} ${c.stats[s]}</span>`).join('');
+    $('sheet-layer').classList.add('active');
+    const btn = $('btn-sheet-toggle-deck');
+    if(activeDeckId){
+      const d = save.decks.find(x=>x.id===activeDeckId);
+      btn.textContent = d.cards.includes(c.id) ? "Remove from Deck" : "Add to Deck";
+      btn.disabled = false;
+    } else { btn.textContent = "Select Deck in Lab"; btn.disabled = true; }
+    const dl = save.dialogues[c.id] || {};
+    $('sheet-dialogue').innerHTML = `<li>Summon: ${dl.summon||'-'}</li><li>Win: ${dl.win||'-'}</li><li>Lose: ${dl.lose||'-'}</li>`;
+  }
+  function closeSheet(){ $('sheet-layer').classList.remove('active'); }
+  function deleteSheetCard(){
+    save.collection = save.collection.filter(x=>x.id!==curSheetId);
+    save.decks.forEach(d => d.cards = d.cards.filter(id=>id!==curSheetId));
+    persist(); renderCollection(); closeSheet();
+  }
+  function toggleSheetDeck(){
+    if(!activeDeckId) return;
+    const deck = save.decks.find(d=>d.id===activeDeckId);
+    if(deck.cards.includes(curSheetId)){
+      deck.cards = deck.cards.filter(id=>id!==curSheetId); toast("Removed");
+    } else { deck.cards.push(curSheetId); toast("Added"); }
+    persist(); openSheet(save.collection.find(c=>c.id===curSheetId));
+  }
+
+  // --- SETTINGS ---
   function renderSettings(){
     $('stat-chips').innerHTML = save.stats.map((s,i)=>`<button class="btn sm ghost" onclick="app.remStat(${i})">${s} x</button>`).join('');
     $('rarity-list').innerHTML = save.rarities.map((r,i)=>`<div class="row space"><span class="small" style="color:${r.color}">${r.name}</span><input type="number" value="${r.factor}" step="0.1" style="width:60px" onchange="app.updRarity(${i},this.value)"></div>`).join('');
     $('inp-rounds').value = save.settings.rounds;
     $('inp-rng').value = save.settings.rng;
   }
-  function addStat(){
-    const v = $('stat-input').value;
-    if(v && !save.stats.includes(v)){ save.stats.push(v); persist(); renderSettings(); }
-  }
+  function addStat(){ const v = $('stat-input').value; if(v && !save.stats.includes(v)){ save.stats.push(v); persist(); renderSettings(); } }
   function remStat(i){ save.stats.splice(i,1); persist(); renderSettings(); }
   function updRarity(i,v){ save.rarities[i].factor=parseFloat(v); persist(); }
   function updateRule(k,v){ save.settings[k]=parseInt(v); persist(); }
-  
   function parsePool(){
     const lines = $('pool-area').value.split('\n');
     const p = [];
-    lines.forEach(l=>{
-      const m = l.match(/\[(.*?)\](.*)/);
-      if(m) p.push({id:uid(), name:m[1], imageUrl:m[2]});
-    });
+    lines.forEach(l=>{ const m = l.match(/\[(.*?)\](.*)/); if(m) p.push({id:uid(), name:m[1], imageUrl:m[2]}); });
     if(p.length){ save.pool=p; persist(); toast("Parsed!"); }
   }
-  function loadDemoPool(){
-    $('pool-area').value = `[Fire Drake]data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='%23333'/><circle cx='32' cy='32' r='20' fill='%23f59e0b'/></svg>\n[Ice Golem]data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='%231e293b'/><rect x='20' y='10' width='24' height='44' fill='%2338bdf8'/></svg>`;
-  }
+  function loadDemoPool(){ $('pool-area').value = `[Fire Drake]data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='%23333'/><circle cx='32' cy='32' r='20' fill='%23f59e0b'/></svg>\n[Ice Golem]data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='%231e293b'/><rect x='20' y='10' width='24' height='44' fill='%2338bdf8'/></svg>`; }
   function hardReset(){ if(confirm("Wipe?")){ localStorage.removeItem('df_v13'); location.reload(); } }
-  function exportSave(){ 
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(save)],{type:'application/json'}));
-    a.download = 'deckforge.json'; a.click();
-  }
+  function exportSave(){ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(save)],{type:'application/json'})); a.download = 'deckforge.json'; a.click(); }
   function setWallpaper(){ save.wallpaper=$('wall-input').value; persist(); init(); }
-  function toggleFullscreen(){
-    if(!document.fullscreenElement){ document.documentElement.requestFullscreen(); }
-    else { if(document.exitFullscreen) document.exitFullscreen(); }
-  }
+  function toggleFullscreen(){ if(!document.fullscreenElement){ document.documentElement.requestFullscreen(); } else { if(document.exitFullscreen) document.exitFullscreen(); } }
 
   function renderAll(){
-    updateMeta(); renderCollection(); renderDeckSelect(); renderDialogSelect(); renderSettings();
+    updateMeta(); renderCollection(); renderDeckSelect(); renderDialogSelect(); renderFusionSelects(); renderSettings();
     $('pool-area').value = save.pool.map(p=>`[${p.name}]${p.imageUrl}`).join('\n');
   }
 
@@ -1065,10 +1150,10 @@ const app = (function(){
     initPressure, startPressure, pressureTap,
     initDice, pickDiceCard, rollDice,
     initMemory, 
-    newDuel, resolveDuelRound, runBattle,
-    saveDeck, setFusion, runFusion, loadDialog, saveDialogue,
+    newDuel, resolveDuelRound, runBattle, filterDuelStrip, viewChampion,
+    saveDeck, selectDeck, setFusion:()=>{}, runFusion, loadDialog, saveDialogue,
     addStat, remStat, updRarity, updateRule, parsePool, loadDemoPool, hardReset, exportSave, setWallpaper, toggleFullscreen,
-    closeSheet, deleteSheetCard, toggleSheetDeck:()=>{toast("Deck Toggled")}
+    closeSheet, deleteSheetCard, toggleSheetDeck
   };
 })();
 </script>
