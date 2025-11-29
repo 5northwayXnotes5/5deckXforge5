@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#000000">
-<title>DeckOS 4.5</title>
+<title>DeckOS 4.6</title>
 <!-- Phosphor Icons -->
 <script src="https://unpkg.com/@phosphor-icons/web"></script>
 <style>
@@ -691,7 +691,7 @@ const app = (function(){
   // States
   let duel={a:false,r:1,ps:0,as:0,u:[],sel:null,deck:null};
   let press={a:false,l:null,bet:0,lvl:1,pos:50,card:null,force:0,time:15};
-  let mem={l:false,g:[],f:null,c:0,a:0}; // Added a:0 for attempts
+  let mem={l:false,g:[],f:null,c:0,a:0}; 
   let curC=null, curD=null;
   let bj={d:[],p:[],db:false,bet:0};
 
@@ -967,27 +967,62 @@ const app = (function(){
     }, 1500);
   }
 
-  // --- ROYALE ---
+  // --- ROYALE (UPDATED 4.6: HOUSE CHALLENGERS) ---
   function initRoyale(){
     $('roy-win-box').style.display='none';
     const sel = $('roy-champ'); sel.innerHTML = '';
+    // User needs at least 1 card to participate
     if(!s.col.length) { sel.innerHTML='<option>No Cards</option>'; return; }
+    
+    // Populate dropdown with unique card types from collection
     const unique = [...new Map(s.col.map(item => [item.tid, item])).values()];
     unique.forEach(c => {
        const t = s.pool.find(x=>x.id===c.tid);
        sel.innerHTML += `<option value="${c.tid}">${t.name}</option>`;
     });
   }
+
   function runRoyale(){
-     if(s.col.length < 2) return notify("Need 2+ Cards");
+     if(!s.col.length) return notify("No Cards");
      const bet = parseInt($('roy-bet').value);
      if(s.gold < bet) return notify("No Gold");
-     const pickId = $('roy-champ').value;
+     const pickTid = $('roy-champ').value;
+     
+     // 1. Find Player Champion (First instance of selected type)
+     const playerCard = s.col.find(c => c.tid === pickTid);
+     if(!playerCard) return notify("Card not found");
+
      s.gold -= bet; save();
 
-     let p = [...s.col];
-     p = p.sort(()=>Math.random()-.5).slice(0, 8);
+     // 2. Create Participants: Player + 7 Bots
+     let p = [playerCard];
      
+     // Generate 7 House Bots
+     for(let i=0; i<7; i++){
+        // Random Template
+        const t = rand(s.pool);
+        // Random Rarity (Weighted: 50% Common, 30% Uncommon, 15% Rare, 4% Epic, 1% Legend)
+        const r = getRarityByWeight([50,30,15,4,1,0]); 
+        
+        // Generate Bot Stats
+        const stat = {};
+        const mult = s.rarity.indexOf(r) + 1;
+        s.stats.forEach(k => stat[k] = Math.floor(Math.random()*20*mult) + (10*mult));
+        
+        // Add Bot
+        p.push({
+            id: 'bot_'+i,
+            tid: t.id,
+            rid: r.id,
+            stat: stat,
+            isBot: true 
+        });
+     }
+
+     // 3. Shuffle Positions
+     p = p.sort(()=>Math.random()-.5);
+     
+     // 4. Run Tournament
      while(p.length > 1){
        const a=p.pop(), b=p.pop(), st=rand(s.stats);
        const w = a.stat[st] > b.stat[st] ? a : b;
@@ -998,12 +1033,14 @@ const app = (function(){
      const winT = s.pool.find(x=>x.id===winner.tid);
      const winR = s.rarity.find(x=>x.id===winner.rid);
      
+     // 5. Display Result
      $('roy-win-box').style.display = 'block';
-     $('roy-win-name').innerText = winT.name;
+     $('roy-win-name').innerText = winT.name + (winner.isBot ? " (Bot)" : "");
      $('roy-win-img').innerHTML = `<img src="${winT.img}" style="width:100%;height:100%;object-fit:cover;">`;
      $('roy-win-img').style.border = `2px solid ${winR.c}`;
      
-     if(winner.tid === pickId) {
+     // 6. Check Win (Compare IDs)
+     if(winner.id === playerCard.id) {
         const payout = bet * 5;
         s.gold += payout;
         $('roy-payout').innerText = `You won ${payout}G!`;
