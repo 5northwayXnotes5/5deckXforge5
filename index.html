@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#000000">
-<title>DeckOS 4.6</title>
+<title>DeckOS 4.7</title>
 <!-- Phosphor Icons -->
 <script src="https://unpkg.com/@phosphor-icons/web"></script>
 <style>
@@ -162,6 +162,14 @@ select:focus, input:focus { outline: none; }
 /* Compact buttons for sheet */
 .btn-row { display: flex; gap: 8px; margin: 16px; }
 .btn-row .btn { margin: 0; flex: 1; font-size: 14px; padding: 10px; }
+
+/* --- LAB FUSION REACTOR --- */
+.reactor-stage { padding: 20px 16px; display: flex; justify-content: space-between; align-items: center; }
+.reactor-slot { width: 80px; height: 120px; background: rgba(0,0,0,0.3); border: 2px dashed #444; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
+.reactor-slot img { width: 100%; height: 100%; object-fit: cover; }
+.reactor-info { flex: 1; text-align: center; padding: 0 10px; }
+.fuse-rate { font-size: 24px; font-weight: 800; color: var(--accent-green); }
+.fuse-cost { font-size: 12px; color: var(--accent-gold); margin-top: 4px; }
 
 /* --- SHOP --- */
 .shop-grid { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 16px; }
@@ -561,7 +569,7 @@ select:focus, input:focus { outline: none; }
     </div>
   </div>
 
-  <!-- LAB -->
+  <!-- LAB (UPDATED) -->
   <div id="app-lab" class="app-window">
     <div class="nav-bar"><div class="nav-title">Lab</div></div>
     <div class="content">
@@ -569,11 +577,23 @@ select:focus, input:focus { outline: none; }
         <div class="list-row"><input id="deck-name" placeholder="New Deck Name" style="width:100%; text-align:left;"><div class="btn sm" onclick="app.saveDeck()">Save</div></div>
         <div class="list-row"><label>Active</label><select id="deck-sel" onchange="app.selDeck(this.value)"></select></div>
       </div>
-      <div class="list-group">
-        <div class="list-row"><select id="fuse-a" style="width:100%; text-align:left;"><option>Card A</option></select></div>
-        <div class="list-row"><select id="fuse-b" style="width:100%; text-align:left;"><option>Card B</option></select></div>
+      
+      <!-- FUSION REACTOR UI -->
+      <div class="reactor-stage">
+         <div class="reactor-slot" id="rx-slot-a"></div>
+         <div class="reactor-info">
+            <div style="font-size:10px; color:#888; margin-bottom:4px;">STABILITY</div>
+            <div class="fuse-rate" id="rx-rate">--%</div>
+            <div class="fuse-cost">Cost: 50G</div>
+         </div>
+         <div class="reactor-slot" id="rx-slot-b"></div>
       </div>
-      <div class="btn filled" onclick="app.fuse()">FUSE</div>
+
+      <div class="list-group">
+        <div class="list-row"><select id="fuse-a" style="width:100%; text-align:left;" onchange="app.updateReactor()"><option value="">Select Card A</option></select></div>
+        <div class="list-row"><select id="fuse-b" style="width:100%; text-align:left;" onchange="app.updateReactor()"><option value="">Select Card B</option></select></div>
+      </div>
+      <div class="btn filled" onclick="app.fuse()">INITIATE FUSION</div>
     </div>
   </div>
   
@@ -967,7 +987,7 @@ const app = (function(){
     }, 1500);
   }
 
-  // --- ROYALE (UPDATED 4.6: HOUSE CHALLENGERS) ---
+  // --- ROYALE ---
   function initRoyale(){
     $('roy-win-box').style.display='none';
     const sel = $('roy-champ'); sel.innerHTML = '';
@@ -1051,7 +1071,7 @@ const app = (function(){
      save();
   }
 
-  // --- PRESSURE 2.0 (UPDATED) ---
+  // --- PRESSURE 2.0 ---
   function startPressure(){
     if(!s.col.length) return notify("No Cards");
     const bet = parseInt($('pressure-bet').value);
@@ -1094,16 +1114,11 @@ const app = (function(){
       $('p-time').innerText = press.time.toFixed(1) + 's';
 
       // AGGRESSIVE DIFFICULTY CURVE
-      // Level 1: 0.3 Force
-      // Level 10: ~2.0 Force (Very hard to counter)
-      // Base growth is slightly exponential
       const currentForce = press.force + (press.lvl * press.lvl * 0.02); 
-      
       press.pos -= currentForce; 
-      
       $('p-bar').style.left = press.pos + '%';
 
-      // STRICTER BOUNDS: 0 to 90 (since bar width is 10%)
+      // STRICTER BOUNDS
       if(press.pos <= 0 || press.pos >= 90) { 
           failPressure();
       }
@@ -1111,7 +1126,7 @@ const app = (function(){
 
   function pressureTap(){
       if(press.a) {
-          press.pos += 5; // Flat push strength
+          press.pos += 5; 
       }
   }
 
@@ -1181,7 +1196,6 @@ const app = (function(){
       const d = s.decks.find(x=>x.id===curD);
       btn.innerText = d.cards.includes(c.id) ? "- Deck" : "+ Deck";
       btn.className = d.cards.includes(c.id) ? "btn danger" : "btn filled";
-      // btn.style.display = 'block'; // Always visible now
     } else { 
        btn.innerText = "Select Deck";
        btn.className = "btn";
@@ -1204,25 +1218,107 @@ const app = (function(){
   function initLab(){
     const sl = $('deck-sel'); sl.innerHTML='<option value="">None</option>';
     s.decks.forEach(d=>sl.innerHTML+=`<option value="${d.id}">${d.name}</option>`);
-    const fa=$('fuse-a'), fb=$('fuse-b'); fa.innerHTML='<option>A</option>'; fb.innerHTML='<option>B</option>';
-    s.col.forEach(c=>{ const o=`<option value="${c.id}">${s.pool.find(x=>x.id===c.tid).name}</option>`; fa.innerHTML+=o; fb.innerHTML+=o; });
+    const fa=$('fuse-a'), fb=$('fuse-b'); fa.innerHTML='<option value="">Select Card</option>'; fb.innerHTML='<option value="">Select Card</option>';
+    s.col.forEach(c=>{ const o=`<option value="${c.id}">${s.pool.find(x=>x.id===c.tid).name} (${s.rarity.find(x=>x.id===c.rid).n[0]})</option>`; fa.innerHTML+=o; fb.innerHTML+=o; });
+    updateReactor();
   }
+  function updateReactor(){
+     const aid = $('fuse-a').value; const bid = $('fuse-b').value;
+     let rate = "--%";
+     
+     // Render A
+     if(aid) {
+        const c = s.col.find(x=>x.id===aid);
+        const t = s.pool.find(x=>x.id===c.tid);
+        $('rx-slot-a').innerHTML = `<img src="${t.img}">`;
+        $('rx-slot-a').style.borderColor = s.rarity.find(x=>x.id===c.rid).c;
+     } else { $('rx-slot-a').innerHTML=''; $('rx-slot-a').style.borderColor='#444'; }
+
+     // Render B
+     if(bid) {
+        const c = s.col.find(x=>x.id===bid);
+        const t = s.pool.find(x=>x.id===c.tid);
+        $('rx-slot-b').innerHTML = `<img src="${t.img}">`;
+        $('rx-slot-b').style.borderColor = s.rarity.find(x=>x.id===c.rid).c;
+     } else { $('rx-slot-b').innerHTML=''; $('rx-slot-b').style.borderColor='#444'; }
+
+     // Calculate Rate
+     if(aid && bid) {
+        if(aid === bid) rate = "ERR";
+        else {
+           const cA = s.col.find(x=>x.id===aid);
+           const cB = s.col.find(x=>x.id===bid);
+           if(cA.rid !== cB.rid) rate = "ERR";
+           else {
+              // Rates: c=90, u=75, r=60, e=40, l=20
+              if(cA.rid==='c') rate = '90%';
+              else if(cA.rid==='u') rate = '75%';
+              else if(cA.rid==='r') rate = '60%';
+              else if(cA.rid==='e') rate = '40%';
+              else if(cA.rid==='l') rate = '20%';
+              else rate = '0%';
+           }
+        }
+     }
+     $('rx-rate').innerText = rate;
+     $('rx-rate').style.color = (rate==='ERR' || rate==='0%') ? '#FF453A' : '#30D158';
+  }
+
   function saveDeck(){ const n=$('deck-name').value; if(n){ s.decks.push({id:uid(),name:n,cards:[]}); save(); initLab(); } }
   function selDeck(v){ curD = v; notify(v ? "Deck Selected" : "Deselected"); }
+  
+  // UNSTABLE FUSION LOGIC
   function fuse(){
-    const a=$('fuse-a').value, b=$('fuse-b').value;
-    if(!a||!b||a===b) return notify("Invalid Fuse");
-    const ca=s.col.find(x=>x.id===a), cb=s.col.find(x=>x.id===b);
+    const aid=$('fuse-a').value, bid=$('fuse-b').value;
+    if(!aid || !bid) return notify("Select 2 Cards");
+    if(aid === bid) return notify("Cannot fuse self!"); // Fix bug
     
-    const base = Math.random()>.5 ? ca : cb;
-    const nextRIdx = s.rarity.findIndex(x=>x.id===base.rid) + 1;
-    if(nextRIdx >= s.rarity.length) return notify("Max Rarity");
-    const newC = createCard(base.tid, s.rarity[nextRIdx].id);
-    if(newC==='CAP') return notify("Rarity Cap Hit");
+    const cA = s.col.find(x=>x.id===aid);
+    const cB = s.col.find(x=>x.id===bid);
     
-    s.col = s.col.filter(x=>x.id!==a && x.id!==b); 
-    s.col.push(newC);
-    save(); initLab(); notify("Fusion Successful!");
+    if(cA.rid !== cB.rid) return notify("Must be same rarity!");
+    
+    if(s.gold < 50) return notify("Need 50G");
+    s.gold -= 50;
+
+    // Determine Success Rate
+    let chance = 0;
+    if(cA.rid==='c') chance = 0.9;
+    else if(cA.rid==='u') chance = 0.75;
+    else if(cA.rid==='r') chance = 0.60;
+    else if(cA.rid==='e') chance = 0.40;
+    else if(cA.rid==='l') chance = 0.20;
+    
+    // Find Next Rarity
+    const currentRIdx = s.rarity.findIndex(x=>x.id===cA.rid);
+    if(currentRIdx >= s.rarity.length-1) return notify("Max Rarity Reached");
+    
+    // ROLL
+    if(Math.random() < chance) {
+       // SUCCESS: Upgrade
+       const nextR = s.rarity[currentRIdx+1];
+       // New card is random type from one of the parents (50/50)
+       const baseTid = Math.random() > 0.5 ? cA.tid : cB.tid;
+       const newC = createCard(baseTid, nextR.id);
+       
+       if(newC === 'CAP') {
+          notify("Fused into Duplicate (Burned)");
+          s.gold += 50; // Refund fuse cost
+       } else {
+          s.col.push(newC);
+          notify("FUSION SUCCESS!");
+       }
+    } else {
+       // FAIL: Destroy
+       s.gold += 10; // Scrap value
+       notify("MELTDOWN! Cards Lost.");
+    }
+    
+    // Remove old cards (consumed either way)
+    s.col = s.col.filter(x => x.id !== aid && x.id !== bid);
+    
+    save(); 
+    initLab(); // Reset UI
   }
   
   function initSet(){ 
@@ -1289,7 +1385,7 @@ const app = (function(){
   }
 
   window.onload = init;
-  return { open, home, buyPack, closePack, initDuel, filterDuel, resolveDuel, startPressure, pressureTap, showSheet, closeSheet, delCard, togDeck, saveDeck, selDeck, fuse, setWall, parsePool, loadDemo, wipe, askWipe, closeConfirm, initMem, initRoyale, runRoyale, openCasinoGame, backCasino, playBJ, hitBJ, standBJ, spinRoulette, spinSlots, rollDice, addStat, remStat };
+  return { open, home, buyPack, closePack, initDuel, filterDuel, resolveDuel, startPressure, pressureTap, showSheet, closeSheet, delCard, togDeck, saveDeck, selDeck, fuse, updateReactor, setWall, parsePool, loadDemo, wipe, askWipe, closeConfirm, initMem, initRoyale, runRoyale, openCasinoGame, backCasino, playBJ, hitBJ, standBJ, spinRoulette, spinSlots, rollDice, addStat, remStat };
 })();
 </script>
 </body>
